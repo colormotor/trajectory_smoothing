@@ -463,6 +463,21 @@ list<Trajectory::TrajectoryStep>::const_iterator Trajectory::getTrajectorySegmen
 	}
 }
 
+size_t Trajectory::getTrajectorySegmentIndex(double time) {
+  // if (time >= trajectory_.back().time_) {
+  //   return path_.section_lengths.size() - 1;
+  // }
+  size_t idx = 0;
+  auto t = getTrajectorySegment(time);
+  for (auto l : path.sectionLengths) {
+    if (t->pathPos <= l) {
+      break;
+    }
+    idx++;
+  }
+  return std::min(path.sectionLengths.size() - 1, idx);
+}
+
 VectorXd Trajectory::getPosition(double time) const {
 	list<TrajectoryStep>::const_iterator it = getTrajectorySegment(time);
 	list<TrajectoryStep>::const_iterator previous = it;

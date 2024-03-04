@@ -42,6 +42,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <Eigen/Geometry>
 
 using namespace std;
@@ -182,26 +183,36 @@ Path::Path(const list<VectorXd> &path, double maxDeviation) :
 	config2++;
 	list<VectorXd>::const_iterator config3;
 	VectorXd startConfig = *config1;
+
 	while(config2 != path.end()) {
+		double sectionLength = 0.0;
 		config3 = config2;
 		config3++;
 		if(maxDeviation > 0.0 && config3 != path.end()) {
-			CircularPathSegment* blendSegment = new CircularPathSegment(0.5 * (*config1 + *config2), *config2, 0.5 * (*config2 + *config3), maxDeviation);
+			CircularPathSegment* blendSegment = new CircularPathSegment(0.5 * (*config1 + *config2), *config2,
+																																	0.5 * (*config2 + *config3), maxDeviation);
 			VectorXd endConfig = blendSegment->getConfig(0.0);
 			if((endConfig - startConfig).norm() > 0.000001) {
 				pathSegments.push_back(new LinearPathSegment(startConfig, endConfig));
+				sectionLength += pathSegments.back()->getLength();
 			}
 			pathSegments.push_back(blendSegment);
-			
+			sectionLength += pathSegments.back()->getLength()/2.0;
 			startConfig = blendSegment->getConfig(blendSegment->getLength());
 		}
 		else {
 			pathSegments.push_back(new LinearPathSegment(startConfig, *config2));
 			startConfig = *config2;
+			sectionLength = pathSegments.back()->getLength();
 		}
+
+		sectionLengths.push_back(sectionLength);
+
 		config1 = config2;
 		config2++;
 	}
+
+	std::partial_sum(sectionLengths.begin(), sectionLengths.end(), sectionLengths.begin());
 
 	// create list of switching point candidates, calculate total path length and absolute positions of path segments
 	for(list<PathSegment*>::iterator segment = pathSegments.begin(); segment != pathSegments.end(); segment++) {
@@ -225,6 +236,7 @@ Path::Path(const Path &path) :
 	for(list<PathSegment*>::const_iterator it = path.pathSegments.begin(); it != path.pathSegments.end(); it++) {
 		pathSegments.push_back((*it)->clone());
 	}
+	sectionLengths = path.sectionLengths;
 }
 
 Path::~Path() {

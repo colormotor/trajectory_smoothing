@@ -11,7 +11,7 @@
 using namespace std;
 using namespace Eigen;
 
-std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd> smooth_waypoints(
+std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> smooth_waypoints(
   const int dof, 
   const double dt,
   const double max_deviation, 
@@ -21,7 +21,8 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
   const double input_dt,
   const int tsteps = -1)
 {
-  assert(max_velocity.cols() == dof);
+  assert(max_velocity.cols() == dof)
+		;
   assert(max_acceleration.cols() == dof);
   assert(positions.cols() == dof);
 
@@ -39,14 +40,14 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
   MatrixXd out_traj_vel = MatrixXd::Zero(1,1);
   MatrixXd out_traj_acc = MatrixXd::Zero(1,1);
   MatrixXd out_traj_jerk = MatrixXd::Zero(1,1);
-  
+  VectorXi out_traj_segments = VectorXi::Zero(1);
+
   // store the acceleration bounds 
   Trajectory trajectory(Path(position_waypoints, max_deviation), max_velocity, 
   max_acceleration, input_dt);
   int length = 0;
   double interpolation_dt = 0.0;
 
-  
   // create output trajectory:
   if(trajectory.isValid())
   {
@@ -67,11 +68,12 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
     out_traj_vel = MatrixXd::Zero(length, dof);
     out_traj_acc = MatrixXd::Zero(length, dof);
     out_traj_jerk = MatrixXd::Zero(length, dof);
-
+		out_traj_segments = VectorXi::Zero(length);
     int count = 0;
     double timestep = 0;
     Eigen::VectorXd position(dof), velocity(dof), acceleration(dof);
- 
+
+
     for(int t=0; t<length; t++ )
     {
       timestep = t*interpolation_dt; 
@@ -93,6 +95,10 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
         out_traj_jerk.row(t) = (out_traj_acc.row(t) - out_traj_acc.row(t- 1)) / interpolation_dt;
 
       }
+
+			int segment = trajectory.getTrajectorySegmentIndex(timestep);
+			out_traj_segments(t) = segment;
+
       count ++;
     }
     
@@ -106,18 +112,18 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
       out_traj_vel.row(i) = out_traj_vel.row( count - 1);
       out_traj_acc.row(i) = out_traj_acc.row(count - 1);
       out_traj_jerk.row(i) = out_traj_jerk.row(count - 1);
-      
+      out_traj_segments(i) = out_traj_segments(count - 1);
     }
     }
 
   }
 
-  std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd> result = std::make_tuple(
+  std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> result = std::make_tuple(
     trajectory.isValid(), length, interpolation_dt, out_traj_pos,
-  out_traj_vel, out_traj_acc, out_traj_jerk);
+  out_traj_vel, out_traj_acc, out_traj_jerk, out_traj_segments);
   return result;
 
- }
+}
 
 bool test(){
   list<VectorXd> waypoints;

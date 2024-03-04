@@ -6,7 +6,6 @@ import numpy as np
 
 from .trajectory_smoothing_impl import smooth, test
 
-
 @dataclass
 class SmoothResult:
     success: bool
@@ -16,16 +15,18 @@ class SmoothResult:
     velocity: Optional[np.ndarray] = None
     acceleration: Optional[np.ndarray] = None
     jerk: Optional[np.ndarray] = None
+    segment_indices: Optional[np.ndarray] = None
     solve_time: float = 0.0
 
     def __post_init__(self):
+        print("Post init")
         if self.success:
             self.interpolation_dt = float(self.interpolation_dt)
             self.position = self.position.astype(dtype=np.float32)
             self.velocity = self.velocity.astype(dtype=np.float32)
             self.acceleration = self.acceleration.astype(dtype=np.float32)
             self.jerk = self.jerk.astype(dtype=np.float32)
-
+            self.segment_indices = self.segment_indices.astype(dtype=np.int32)
 
 class TrajectorySmoother:
     def __init__(
@@ -51,7 +52,7 @@ class TrajectorySmoother:
         traj = trajectory.astype(dtype=np.float64)
         if max_tsteps is None:
             max_tsteps = -1
-        (out0, out1, out2, out3, out4, out5, out6) = smooth(
+        (out0, out1, out2, out3, out4, out5, out6, out7) = smooth(
             self.dof,
             interpolation_dt,
             self.max_deviation,
@@ -72,6 +73,7 @@ class TrajectorySmoother:
             out4,
             out5,
             out6,
+            out7,
             time.time() - st_time,
         )
 
