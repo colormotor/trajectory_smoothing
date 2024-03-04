@@ -53,17 +53,11 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
   {
     // trajectory.outputPhasePlaneTrajectory();
     double duration = trajectory.getDuration();
-    if(tsteps > 0)
-    {
-      length = tsteps;
-      interpolation_dt = (duration) / (length-1);
-    }
-    else
-    {
-      length = ((duration+dt)/dt);
-      interpolation_dt = dt;
-    }
-    
+
+
+    length = ((duration+dt)/dt);
+    interpolation_dt = dt;
+
     out_traj_pos = MatrixXd::Zero(length, dof);
     out_traj_vel = MatrixXd::Zero(length, dof);
     out_traj_acc = MatrixXd::Zero(length, dof);
@@ -73,15 +67,16 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
     double timestep = 0;
     Eigen::VectorXd position(dof), velocity(dof), acceleration(dof);
 
-
     for(int t=0; t<length; t++ )
     {
-      timestep = t*interpolation_dt; 
+      timestep = interpolation_dt*t;
       // storing positions:
       if (timestep > duration){
         break;
       }
-      trajectory.getPositionVelocityAcceleration(timestep, position, velocity, acceleration);
+      // trajectory.getPositionVelocityAcceleration(timestep, position, velocity, acceleration);
+      position = trajectory.getPosition(timestep);
+			velocity = trajectory.getVelocity(timestep);
       out_traj_pos.row(t) = position;
       out_traj_vel.row(t) = velocity;
       //out_traj.row(t+2*length) = acceleration;
@@ -95,25 +90,22 @@ std::tuple<bool, int,  double, Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd
         out_traj_jerk.row(t) = (out_traj_acc.row(t) - out_traj_acc.row(t- 1)) / interpolation_dt;
 
       }
-
+			//int segment = trajectory.getIndex(timestep);
 			int segment = trajectory.getTrajectorySegmentIndex(timestep);
 			out_traj_segments(t) = segment;
-
-      count ++;
+      count++;
     }
     
     if (count < length)
     {
-  
-    
-    for(int i = count; i<length; i++)
-    {
-      out_traj_pos.row(i) = out_traj_pos.row(count-1);
-      out_traj_vel.row(i) = out_traj_vel.row( count - 1);
-      out_traj_acc.row(i) = out_traj_acc.row(count - 1);
-      out_traj_jerk.row(i) = out_traj_jerk.row(count - 1);
-      out_traj_segments(i) = out_traj_segments(count - 1);
-    }
+			for(int i = count; i<length; i++)
+			{
+				out_traj_pos.row(i) = out_traj_pos.row(count-1);
+				out_traj_vel.row(i) = out_traj_vel.row( count - 1);
+				out_traj_acc.row(i) = out_traj_acc.row(count - 1);
+				out_traj_jerk.row(i) = out_traj_jerk.row(count - 1);
+				out_traj_segments(i) = out_traj_segments(count - 1);
+			}
     }
 
   }

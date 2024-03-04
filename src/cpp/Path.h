@@ -38,52 +38,54 @@
 
 #pragma once
 
-#include <list>
 #include <Eigen/Core>
+#include <list>
+#include <memory>
 
-class PathSegment
-{
-public:
-	PathSegment(double length = 0.0) :
-		length(length)
-	{
-	}
-	
-	virtual ~PathSegment() {}
 
-	double getLength() const {
-		return length;
-	}
-	virtual Eigen::VectorXd getConfig(double s) const = 0;
-	virtual Eigen::VectorXd getTangent(double s) const = 0;
-	virtual Eigen::VectorXd getCurvature(double s) const = 0;
-	virtual std::list<double> getSwitchingPoints() const = 0;
-	virtual PathSegment* clone() const = 0;
+class PathSegment {
+ public:
+  PathSegment(double length = 0.0) : length_(length) {}
+  virtual ~PathSegment()  // is required for destructing derived classes
+  {}
+  double getLength() const { return length_; }
+  virtual Eigen::VectorXd getConfig(double s) const = 0;
+  virtual Eigen::VectorXd getTangent(double s) const = 0;
+  virtual Eigen::VectorXd getCurvature(double s) const = 0;
+  virtual std::list<double> getSwitchingPoints() const = 0;
+  virtual PathSegment* clone() const = 0;
 
-	double position;
-protected:
-	double length;
+  double position_;
+	int index;
+ protected:
+  double length_;
 };
 
+class Path {
+ public:
+  Path(const std::list<Eigen::VectorXd>& path, double max_deviation = 0.0);
+  Path(const Path& path);
+  double getLength() const;
+  Eigen::VectorXd getConfig(double s) const;
+  Eigen::VectorXd getTangent(double s) const;
+  Eigen::VectorXd getCurvature(double s) const;
 
+  /** @brief Get the next switching point.
+   *  @param[in] s Arc length traveled so far
+   *  @param[out] discontinuity True if this switching point is a discontinuity
+   *  @return arc length to the switching point
+   **/
+  double getNextSwitchingPoint(double s, bool& discontinuity) const;
+	PathSegment* getPathSegment(double& s) const;
+  /// @brief Return a list of all switching points as a pair (arc length to
+  /// switching point, discontinuity)
+  std::list<std::pair<double, bool>> getSwitchingPoints() const;
 
-class Path
-{
-public:
-	Path(const std::list<Eigen::VectorXd> &path, double maxDeviation = 0.0);
-	Path(const Path &path);
-	~Path();
-	double getLength() const;
-	Eigen::VectorXd getConfig(double s) const;
-	Eigen::VectorXd getTangent(double s) const;
-	Eigen::VectorXd getCurvature(double s) const;
-	double getNextSwitchingPoint(double s, bool &discontinuity) const;
-	std::list<std::pair<double, bool> > getSwitchingPoints() const;
+  std::list<double> section_lengths;
+  std::list<std::unique_ptr<PathSegment>> path_segments_;
 
-	std::list<double> sectionLengths;
-private:
-	PathSegment* getPathSegment(double &s) const;
-	double length;
-	std::list<std::pair<double, bool> > switchingPoints;
-	std::list<PathSegment*> pathSegments;
+ private:
+
+  double length_;
+  std::list<std::pair<double, bool>> switching_points_;
 };
